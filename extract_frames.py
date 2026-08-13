@@ -44,7 +44,7 @@ def load_state(state_path: Path) -> set[str]:
     if not state_path.exists():
         return set()
     try:
-        return set(json.loads(state_path.read_text(encoding="utf-8")).get("processed_videos", []))
+        return set(json.loads(state_path.read_text(encoding="utf-8-sig")).get("processed_videos", []))
     except (json.JSONDecodeError, OSError) as error:
         sys.exit(f"Cannot read extraction state {state_path}: {error}")
 

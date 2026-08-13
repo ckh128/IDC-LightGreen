@@ -25,7 +25,7 @@ PROJECT = Path(__file__).resolve().parent.parent
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--weights", type=Path, default=PROJECT / "models" / "best_d01.pt")
+    parser.add_argument("--weights", type=Path, default=PROJECT / "models" / "d01" / "best_d01.pt")
     parser.add_argument("--source", type=Path, default=PROJECT / "raw_images" / "in")
     parser.add_argument("--raw-images", type=Path, default=PROJECT / "raw_images")
     parser.add_argument("--export", type=Path, default=PROJECT / "exports" / "d02" / "pseudolabel_yolo")
