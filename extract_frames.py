@@ -27,11 +27,17 @@ except ImportError:
 VIDEO_SUFFIXES = {".mp4", ".mov", ".avi", ".mkv", ".h264"}
 
 
-def parse_args() -> argparse.Namespace:
+def default_data_directory(name: str) -> Path:
+    """Prefer a shared data folder next to the repository when it exists."""
     project = Path(__file__).resolve().parent
+    shared = project.parent / name
+    return shared if shared.is_dir() else project / name
+
+
+def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Extract every Nth frame as JPG.")
-    parser.add_argument("--videos", type=Path, default=project / "raw_videos")
-    parser.add_argument("--images", type=Path, default=project / "raw_images" / "review")
+    parser.add_argument("--videos", type=Path, default=default_data_directory("raw_videos"))
+    parser.add_argument("--images", type=Path, default=default_data_directory("raw_images") / "review")
     parser.add_argument("--every", type=int, default=5, help="Extract every Nth frame (default: 5).")
     return parser.parse_args()
 

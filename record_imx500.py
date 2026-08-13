@@ -46,6 +46,13 @@ def make_output_path(root: Path) -> Path:
     return candidate
 
 
+def default_data_directory(name: str) -> Path:
+    """Prefer a shared data folder next to the repository when it exists."""
+    project = Path(__file__).resolve().parent
+    shared = project.parent / name
+    return shared if shared.is_dir() else project / name
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Record IMX500 video with a live preview.")
     parser.add_argument("--duration", type=float, default=0,
@@ -55,8 +62,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fps", type=int, default=30)
     parser.add_argument(
         "--output-dir", type=Path,
-        default=Path(__file__).resolve().parent / "raw_videos",
-        help="Directory for sequential MP4 files (default: repository raw_videos/).",
+        default=default_data_directory("raw_videos"),
+        help="Directory for sequential MP4 files (default: shared raw_videos/ when present).",
     )
     parser.add_argument("--no-preview", action="store_true",
                         help="Record without the GUI preview (useful when no desktop is running).")
