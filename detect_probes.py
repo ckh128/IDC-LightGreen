@@ -45,6 +45,7 @@ def parse_args() -> argparse.Namespace:
                         help="Copy annotated probe JPGs to this review-only archive.")
     parser.add_argument("--confidence", type=float, default=0.25)
     parser.add_argument("--fps", type=float, default=12.0)
+    parser.add_argument("--session", help="Process one dataset prefix, e.g. d01 or d02.")
     return parser.parse_args()
 
 
@@ -68,13 +69,18 @@ def make_video(images: list[Path], destination: Path, fps: float) -> None:
 def main() -> None:
     args = parse_args()
     probe = args.images_root / "probe"
+    if args.session and (probe / args.session).is_dir():
+        probe = probe / args.session
     if not args.weights.is_file():
         sys.exit(f"Weights file does not exist: {args.weights}")
-    images = sorted(probe.glob("d*_p*.jpg"), key=sort_key)
+    pattern = f"{args.session}_*_p*.jpg" if args.session else "d*_p*.jpg"
+    images = sorted(probe.glob(pattern), key=sort_key)
     if not images:
         print(f"No probe images found in: {probe}")
         return
 
+    if args.session:
+        args.processed_images = args.processed_images / f"{args.session}_probe_detections"
     args.processed_images.mkdir(parents=True, exist_ok=True)
     args.processed_videos.mkdir(parents=True, exist_ok=True)
     args.raw_archive.mkdir(parents=True, exist_ok=True)
