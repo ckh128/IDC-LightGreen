@@ -4,8 +4,8 @@
 Run from the project folder:
     python3 extract_frames.py
 
-New, unlabelled images go to raw_images/review/. Move them to raw_images/keep/
-or raw_images/drop/ after reviewing them. Existing JPGs are left untouched, so
+New, unlabelled images go to raw_images/in/. Run a model/review pass to move
+them to raw_images/keep/, raw_images/review/, or raw_images/drop/. Existing JPGs are left untouched, so
 the command is safe to run repeatedly after adding more videos.
 """
 
@@ -39,7 +39,7 @@ def default_data_directory(name: str) -> Path:
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Extract every Nth frame as JPG.")
     parser.add_argument("--videos", type=Path, default=default_data_directory("raw_videos"))
-    parser.add_argument("--images", type=Path, default=default_data_directory("raw_images") / "review")
+    parser.add_argument("--images", type=Path, default=default_data_directory("raw_images") / "in")
     parser.add_argument("--every", type=int, default=5, help="Extract every Nth frame (default: 5).")
     return parser.parse_args()
 
