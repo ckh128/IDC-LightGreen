@@ -5,7 +5,8 @@ Examples:
   python3 record_imx500.py
   python3 record_imx500.py --duration 300 --width 1920 --height 1080 --fps 30
 
-Videos are saved without overwriting old files in ~/yolo_videos/YYYY-MM-DD/.
+Videos are saved without overwriting old files in raw_videos/ as 000001.mp4,
+000002.mp4, and so on.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ import sys
 import time
 from datetime import datetime
 from pathlib import Path
+import re
 
 try:
     from picamera2 import Picamera2, Preview
@@ -28,16 +30,19 @@ except ImportError:
     )
 
 
-def make_output_path(root: Path, width: int, height: int, fps: int) -> Path:
-    """Return a new path; never reuse or overwrite an existing recording."""
-    folder = root / datetime.now().strftime("%Y-%m-%d")
-    folder.mkdir(parents=True, exist_ok=True)
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S_%f")
-    candidate = folder / f"imx500_{stamp}_{width}x{height}_{fps}fps.mp4"
-    number = 1
+def make_output_path(root: Path) -> Path:
+    """Return the next sequential MP4 path without overwriting old recordings."""
+    root.mkdir(parents=True, exist_ok=True)
+    numbers = [
+        int(match.group(1))
+        for path in root.glob("*.mp4")
+        if (match := re.fullmatch(r"(\d+)\.mp4", path.name))
+    ]
+    next_number = max(numbers, default=0) + 1
+    candidate = root / f"{next_number:06d}.mp4"
     while candidate.exists():
-        candidate = folder / f"imx500_{stamp}_{number}_{width}x{height}_{fps}fps.mp4"
-        number += 1
+        next_number += 1
+        candidate = root / f"{next_number:06d}.mp4"
     return candidate
 
 
@@ -48,7 +53,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--width", type=int, default=1920)
     parser.add_argument("--height", type=int, default=1080)
     parser.add_argument("--fps", type=int, default=30)
-    parser.add_argument("--output-dir", type=Path, default=Path.home() / "yolo_videos")
+    parser.add_argument(
+        "--output-dir", type=Path,
+        default=Path(__file__).resolve().parent / "raw_videos",
+        help="Directory for sequential MP4 files (default: repository raw_videos/).",
+    )
     parser.add_argument("--no-preview", action="store_true",
                         help="Record without the GUI preview (useful when no desktop is running).")
     return parser.parse_args()
@@ -59,7 +68,7 @@ def main() -> None:
     if args.duration < 0 or args.width <= 0 or args.height <= 0 or args.fps <= 0:
         sys.exit("Duration must be >= 0; width, height, and fps must be positive.")
 
-    output_path = make_output_path(args.output_dir, args.width, args.height, args.fps)
+    output_path = make_output_path(args.output_dir)
     picam2 = Picamera2()
     config = picam2.create_video_configuration(
         main={"size": (args.width, args.height)},
