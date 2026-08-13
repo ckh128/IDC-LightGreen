@@ -12,6 +12,8 @@ the command is safe to run repeatedly after adding more videos.
 from __future__ import annotations
 
 import argparse
+import json
+import re
 import sys
 from pathlib import Path
 
@@ -42,31 +44,57 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def extract(video: Path, destination: Path, every: int) -> tuple[int, int]:
+def next_dataset_id(images_root: Path) -> int:
+    """Choose the next dNN session id from all previously extracted JPGs."""
+    ids = []
+    for image in images_root.rglob("*.jpg"):
+        match = re.match(r"d(\d+)_\d+\.jpg$", image.name)
+        if match:
+            ids.append(int(match.group(1)))
+    return max(ids, default=0) + 1
+
+
+def load_state(state_path: Path) -> set[str]:
+    if not state_path.exists():
+        return set()
+    try:
+        return set(json.loads(state_path.read_text(encoding="utf-8")).get("processed_videos", []))
+    except (json.JSONDecodeError, OSError) as error:
+        sys.exit(f"Cannot read extraction state {state_path}: {error}")
+
+
+def save_state(state_path: Path, processed: set[str]) -> None:
+    state_path.write_text(
+        json.dumps({"processed_videos": sorted(processed)}, indent=2) + "\n",
+        encoding="utf-8",
+    )
+
+
+def extract(video: Path, destination: Path, every: int, dataset_id: int, start: int) -> tuple[int, int, int]:
     """Extract selected frames, returning (new_images, selected_frames)."""
     capture = cv2.VideoCapture(str(video))
     if not capture.isOpened():
         print(f"Skipping unreadable video: {video.name}", file=sys.stderr)
-        return 0, 0
+        return 0, 0, start
 
     added = selected = frame_index = 0
+    sequence = start
     while True:
         ok, frame = capture.read()
         if not ok:
             break
         if frame_index % every == 0:
             selected += 1
-            # Preserve the source video name (including names such as d__...)
-            # and the original frame index, so every output filename is stable.
-            output = destination / f"{video.stem}_f{frame_index:06d}.jpg"
+            output = destination / f"d{dataset_id:02d}_{sequence:06d}.jpg"
             if not output.exists():
                 if not cv2.imwrite(str(output), frame):
                     capture.release()
                     raise RuntimeError(f"Could not write {output}")
                 added += 1
+            sequence += 1
         frame_index += 1
     capture.release()
-    return added, selected
+    return added, selected, sequence
 
 
 def main() -> None:
@@ -77,17 +105,26 @@ def main() -> None:
         sys.exit(f"Video folder does not exist: {args.videos}")
 
     args.images.mkdir(parents=True, exist_ok=True)
-    videos = sorted(path for path in args.videos.iterdir() if path.suffix.lower() in VIDEO_SUFFIXES)
+    state_path = args.images.parent / ".extract_frames_state.json"
+    processed = load_state(state_path)
+    videos = sorted(
+        path for path in args.videos.iterdir()
+        if path.suffix.lower() in VIDEO_SUFFIXES and path.name not in processed
+    )
     if not videos:
-        print(f"No videos found in: {args.videos}")
+        print("No new videos to extract.")
         return
 
+    dataset_id = next_dataset_id(args.images.parent)
+    sequence = 1
     total_added = 0
     for video in videos:
-        added, selected = extract(video, args.images, args.every)
+        added, selected, sequence = extract(video, args.images, args.every, dataset_id, sequence)
         total_added += added
         print(f"{video.name}: {added} new JPG(s), {selected} selected frame(s)")
-    print(f"Done. {total_added} new image(s) saved to: {args.images}")
+        processed.add(video.name)
+        save_state(state_path, processed)
+    print(f"Done. {total_added} new image(s) saved to: {args.images} (d{dataset_id:02d})")
 
 
 if __name__ == "__main__":
