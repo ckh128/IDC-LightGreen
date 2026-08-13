@@ -2,7 +2,7 @@
 """Create a leak-resistant YOLO train/val/test dataset from labelled pairs.
 
 Input:  ../data/images/{train,val} and ../data/labels/{train,val}
-Output: ../processed_data/{images,labels}/{train,val,test} plus data.yaml
+Output: ../datasets/{images,labels}/{train,val,test} plus data.yaml
 
 Adjacent numbered source frames stay together in one split, preventing near
 identical video frames from leaking from training into validation/test.
@@ -71,7 +71,7 @@ def main() -> None:
     project = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(description="Prepare YOLO dataset splits.")
     parser.add_argument("--source", type=Path, default=project / "data")
-    parser.add_argument("--output", type=Path, default=project / "processed_data")
+    parser.add_argument("--output", type=Path, default=project / "datasets")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 

@@ -39,8 +39,8 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Annotate held-out temporal probe frames with YOLO.")
     parser.add_argument("--weights", type=Path, required=True, help="Trained YOLO .pt weights file.")
     parser.add_argument("--images-root", type=Path, default=default_data_directory("raw_images"))
-    parser.add_argument("--processed-images", type=Path, default=default_data_directory("processed_images"))
-    parser.add_argument("--processed-videos", type=Path, default=default_data_directory("processed_videos"))
+    parser.add_argument("--processed-images", type=Path, default=default_data_directory("outputs") / "images")
+    parser.add_argument("--processed-videos", type=Path, default=default_data_directory("outputs") / "videos")
     parser.add_argument("--raw-archive", type=Path, default=default_data_directory("raw_images") / "d00",
                         help="Copy annotated probe JPGs to this review-only archive.")
     parser.add_argument("--confidence", type=float, default=0.25)
