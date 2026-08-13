@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import shutil
 import sys
 from pathlib import Path
 
@@ -40,6 +41,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--images-root", type=Path, default=default_data_directory("raw_images"))
     parser.add_argument("--processed-images", type=Path, default=default_data_directory("processed_images"))
     parser.add_argument("--processed-videos", type=Path, default=default_data_directory("processed_videos"))
+    parser.add_argument("--raw-archive", type=Path, default=default_data_directory("raw_images") / "d00",
+                        help="Copy annotated probe JPGs to this review-only archive.")
     parser.add_argument("--confidence", type=float, default=0.25)
     parser.add_argument("--fps", type=float, default=12.0)
     return parser.parse_args()
@@ -74,13 +77,21 @@ def main() -> None:
 
     args.processed_images.mkdir(parents=True, exist_ok=True)
     args.processed_videos.mkdir(parents=True, exist_ok=True)
+    args.raw_archive.mkdir(parents=True, exist_ok=True)
     model = YOLO(str(args.weights))
     grouped: dict[int, list[Path]] = {}
+    archive_index = len(list(args.raw_archive.glob("d00_*.jpg"))) + 1
     for image in images:
         output = args.processed_images / image.name
         result = model.predict(source=str(image), conf=args.confidence, verbose=False)[0]
         if not cv2.imwrite(str(output), result.plot()):
             raise RuntimeError(f"Could not write {output}")
+        archive = args.raw_archive / f"d00_{archive_index:06d}.jpg"
+        while archive.exists():
+            archive_index += 1
+            archive = args.raw_archive / f"d00_{archive_index:06d}.jpg"
+        shutil.copy2(output, archive)
+        archive_index += 1
         session = sort_key(image)[0]
         grouped.setdefault(session, []).append(output)
 
