@@ -114,7 +114,7 @@ def main() -> None:
                 shutil.copy2(image, image_dir / output_image)
                 shutil.copy2(label, label_dir / f"{Path(output_image).stem}.txt")
         (args.output / "data.yaml").write_text(
-            "path: .\ntrain: images/train\nval: images/val\ntest: images/test\n"
+            f"path: {args.output.resolve().as_posix()}\ntrain: images/train\nval: images/val\ntest: images/test\n"
             "names:\n  0: human\n  1: robot\n", encoding="utf-8"
         )
         with (args.output / "image_source_manifest.csv").open("w", newline="", encoding="utf-8") as file:
