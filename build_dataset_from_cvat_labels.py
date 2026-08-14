@@ -56,7 +56,9 @@ def main() -> None:
     project = Path(__file__).resolve().parent.parent
     parser = argparse.ArgumentParser(description="Pair CVAT labels with local images and split a YOLO dataset.")
     parser.add_argument("--labels-zip", type=Path, default=project / "raw_data" / "d01_raw_data_001.zip")
-    parser.add_argument("--output", type=Path, default=project / "processed_data")
+    parser.add_argument("--images-root", type=Path, default=project / "raw_images" / "in")
+    parser.add_argument("--output", type=Path, default=project / "datasets" / "d01")
+    parser.add_argument("--dataset-id", default="d01")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
     if not args.labels_zip.is_file():
@@ -85,7 +87,8 @@ def main() -> None:
         missing: list[str] = []
         choices: list[tuple[str, str, int]] = []
         for label in labels:
-            candidates = index.get(label.stem, [])
+            preferred = args.images_root / f"{label.stem}.jpg"
+            candidates = [preferred] if preferred.is_file() else index.get(label.stem, [])
             if not candidates:
                 missing.append(label.name)
                 continue
@@ -94,12 +97,13 @@ def main() -> None:
             choices.append((label.name, str(image), len(candidates)))
 
         if missing:
-            (project / "raw_data" / "d01_missing_images.txt").write_text("\n".join(missing) + "\n", encoding="utf-8")
-            sys.exit(f"Missing {len(missing)} image(s). See raw_data/d01_missing_images.txt")
+            missing_path = project / "raw_data" / f"{args.dataset_id}_missing_images.txt"
+            missing_path.write_text("\n".join(missing) + "\n", encoding="utf-8")
+            sys.exit(f"Missing {len(missing)} image(s). See {missing_path}")
         if args.output.exists():
             shutil.rmtree(args.output)
 
-        numbered = {label: f"d01_{number:06d}.jpg" for number, (label, _image) in enumerate(sorted(pairs, key=lambda pair: frame_number(pair[0])), start=1)}
+        numbered = {label: f"{args.dataset_id}_{number:06d}.jpg" for number, (label, _image) in enumerate(sorted(pairs, key=lambda pair: frame_number(pair[0])), start=1)}
         dataset = assign(contiguous_groups(pairs), len(pairs))
         for split, items in dataset.items():
             image_dir, label_dir = args.output / "images" / split, args.output / "labels" / split
