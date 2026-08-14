@@ -25,17 +25,18 @@ SPLITS = ("train", "val", "test")
 RATIOS = {"train": 0.70, "val": 0.20, "test": 0.10}
 
 
-def frame_number(path: Path) -> int:
-    match = re.search(r"(\d+)$", path.stem)
+def frame_key(path: Path) -> tuple[int, int]:
+    match = re.fullmatch(r"d\d+_(\d+)(?:_p(\d+))?", path.stem)
     if not match:
-        raise ValueError(f"Name must end with a frame number: {path.name}")
-    return int(match.group(1))
+        raise ValueError(f"Unexpected image name: {path.name}")
+    return int(match.group(1)), int(match.group(2) or 0)
 
 
 def contiguous_groups(items: list[tuple[Path, Path]]) -> list[list[tuple[Path, Path]]]:
     groups: list[list[tuple[Path, Path]]] = []
-    for item in sorted(items, key=lambda pair: frame_number(pair[0])):
-        if not groups or frame_number(item[0]) != frame_number(groups[-1][-1][0]) + 1:
+    for item in sorted(items, key=lambda pair: frame_key(pair[0])):
+        current = frame_key(item[0])[0]
+        if not groups or current > frame_key(groups[-1][-1][0])[0] + 1:
             groups.append([item])
         else:
             groups[-1].append(item)
@@ -103,7 +104,7 @@ def main() -> None:
         if args.output.exists():
             shutil.rmtree(args.output)
 
-        numbered = {label: f"{args.dataset_id}_{number:06d}.jpg" for number, (label, _image) in enumerate(sorted(pairs, key=lambda pair: frame_number(pair[0])), start=1)}
+        numbered = {label: f"{args.dataset_id}_{number:06d}.jpg" for number, (label, _image) in enumerate(sorted(pairs, key=lambda pair: frame_key(pair[0])), start=1)}
         dataset = assign(contiguous_groups(pairs), len(pairs))
         for split, items in dataset.items():
             image_dir, label_dir = args.output / "images" / split, args.output / "labels" / split
